@@ -5,20 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem eOPR SKPK Miri</title>
     
-    <!-- Memuatkan Tailwind CSS untuk rekaan -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Memuatkan React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     
-    <!-- Memuatkan Babel untuk membaca sintaks JSX dalam pelayar -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        /* Tetapan cetakan PDF */
+        /* Tetapan cetakan PDF ke saiz A4 dan skala automatik 85% */
         @media print {
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            @page {
+                size: A4;
+                margin: 10mm;
+            }
+            body { 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+                zoom: 0.85; /* Skala secara automatik ke 85% */
+            }
             .print\:hidden { display: none !important; }
             .print\:shadow-none { box-shadow: none !important; }
             .print\:p-0 { padding: 0 !important; }
@@ -29,10 +34,8 @@
 </head>
 <body class="bg-gray-100 text-gray-900 font-sans">
     
-    <!-- Tempat Aplikasi React akan dipaparkan -->
     <div id="root"></div>
 
-    <!-- Kod Aplikasi React (Babel) -->
     <script type="text/babel">
         const { useState, useRef } = React;
 
@@ -44,6 +47,7 @@
         const ArrowLeft = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="19" x2="5" y1="12" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>;
         const ImageIcon = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>;
         const CheckCircle = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+        const Pencil = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>;
 
 
         // Senarai nama guru
@@ -67,8 +71,9 @@
           const [reports, setReports] = useState([]);
           const [currentReport, setCurrentReport] = useState(null);
 
-          // Nilai lalai borang
+          // Nilai lalai borang (Ditambah ID untuk fungsi Edit)
           const initialForm = {
+            id: null,
             program: '',
             panitia: '',
             penyelaras: '',
@@ -150,18 +155,33 @@
 
           const handleSubmit = (e) => {
             e.preventDefault();
-            const newReport = { ...formData, id: Date.now() };
-            setReports([newReport, ...reports]);
+            
+            if (formData.id) {
+              // Jika ini laporan yang sedang diedit (Update)
+              const updatedReports = reports.map(r => r.id === formData.id ? formData : r);
+              setReports(updatedReports);
+              setCurrentReport(formData);
+            } else {
+              // Jika ini laporan baharu (Create)
+              const newReport = { ...formData, id: Date.now() };
+              setReports([newReport, ...reports]);
+              setCurrentReport(newReport);
+            }
+            
             setFormData(initialForm);
-            setCurrentReport(newReport);
             setActiveTab('preview'); 
+          };
+
+          const handleEdit = (report) => {
+            setFormData(report);
+            setActiveTab('form');
           };
 
           const renderForm = () => (
             <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md mb-10">
               <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-gray-800">
                 <FileText className="text-blue-600" />
-                Borang eOPR SKPK Miri
+                {formData.id ? 'Kemaskini eOPR SKPK Miri' : 'Borang eOPR SKPK Miri'}
               </h2>
               
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -362,9 +382,9 @@
                   )}
                 </div>
 
-                <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-md shadow hover:bg-blue-700 transition flex justify-center items-center gap-2">
-                  <CheckCircle size={20} />
-                  Simpan & Jana Laporan
+                <button type="submit" className={`w-full text-white font-bold py-3 px-4 rounded-md shadow transition flex justify-center items-center gap-2 ${formData.id ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                  {formData.id ? <Pencil size={20} /> : <CheckCircle size={20} />}
+                  {formData.id ? 'Kemaskini & Jana Laporan' : 'Simpan & Jana Laporan'}
                 </button>
               </form>
             </div>
@@ -399,15 +419,21 @@
                           <td className="py-3 px-4 border-b text-sm text-gray-800">{report.tarikh || '-'}</td>
                           <td className="py-3 px-4 border-b text-sm text-gray-800 font-medium">{report.program}</td>
                           <td className="py-3 px-4 border-b text-sm text-gray-600">{report.disediakanOleh}</td>
-                          <td className="py-3 px-4 border-b text-center">
+                          <td className="py-3 px-4 border-b text-center space-x-2">
                             <button 
                               onClick={() => {
                                 setCurrentReport(report);
                                 setActiveTab('preview');
                               }}
-                              className="bg-blue-100 text-blue-700 px-3 py-1 rounded-md text-sm font-medium hover:bg-blue-200 transition"
+                              className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-md text-sm font-medium hover:bg-blue-200 transition"
                             >
                               Lihat / Cetak
+                            </button>
+                            <button 
+                              onClick={() => handleEdit(report)}
+                              className="bg-yellow-100 text-yellow-700 px-3 py-1.5 rounded-md text-sm font-medium hover:bg-yellow-200 transition"
+                            >
+                              Kemaskini
                             </button>
                           </td>
                         </tr>
@@ -435,18 +461,28 @@
             return (
               <div className="max-w-4xl mx-auto mb-10">
                 <div className="mb-6 flex justify-between items-center print:hidden bg-white p-4 rounded-lg shadow-sm">
-                  <button 
-                    onClick={() => setActiveTab('list')}
-                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
-                  >
-                    <ArrowLeft size={18} /> Kembali
-                  </button>
-                  <button 
-                    onClick={() => window.print()}
-                    className="bg-green-600 text-white px-4 py-2 rounded-md shadow hover:bg-green-700 transition flex items-center gap-2 font-medium"
-                  >
-                    <Printer size={18} /> Cetak ke PDF
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setActiveTab('list')}
+                      className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition font-medium"
+                    >
+                      <ArrowLeft size={18} /> Kembali
+                    </button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleEdit(r)}
+                      className="bg-yellow-500 text-white px-4 py-2 rounded-md shadow hover:bg-yellow-600 transition flex items-center gap-2 font-medium"
+                    >
+                      <Pencil size={18} /> Kemaskini
+                    </button>
+                    <button 
+                      onClick={() => window.print()}
+                      className="bg-green-600 text-white px-4 py-2 rounded-md shadow hover:bg-green-700 transition flex items-center gap-2 font-medium"
+                    >
+                      <Printer size={18} /> Cetak ke PDF
+                    </button>
+                  </div>
                 </div>
 
                 <div className="bg-white p-8 md:p-12 shadow-lg print:shadow-none print:p-0 w-full min-h-[1056px] text-black relative" style={{ fontFamily: 'Arial, sans-serif' }}>
@@ -609,8 +645,11 @@
                   </div>
                   <div className="flex gap-2">
                     <button 
-                      onClick={() => setActiveTab('form')}
-                      className={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition ${activeTab === 'form' ? 'bg-blue-600 shadow-inner' : 'hover:bg-blue-700'}`}
+                      onClick={() => {
+                        setFormData(initialForm); // Reset borang apabila butang "Borang Baru" ditekan
+                        setActiveTab('form');
+                      }}
+                      className={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition ${activeTab === 'form' && !formData.id ? 'bg-blue-600 shadow-inner' : 'hover:bg-blue-700'}`}
                     >
                       <PlusCircle size={18} /> Borang Baru
                     </button>
