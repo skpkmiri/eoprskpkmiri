@@ -93,7 +93,7 @@
             disahkanOleh: senaraiGuru[0],
             jawatanDisahkan: 'Guru Besar',
             tarikhDisahkan: '',
-            gambar: null
+            gambar: []
           };
 
           const [formData, setFormData] = useState(initialForm);
@@ -126,14 +126,26 @@
           };
 
           const handleImageUpload = (e) => {
-            const file = e.target.files[0];
-            if (file) {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            const remainingSlots = 6 - formData.gambar.length;
+            const filesToProcess = files.slice(0, remainingSlots);
+
+            filesToProcess.forEach(file => {
               const reader = new FileReader();
               reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, gambar: reader.result }));
+                setFormData(prev => ({ ...prev, gambar: [...prev.gambar, reader.result].slice(0, 6) }));
               };
               reader.readAsDataURL(file);
-            }
+            });
+          };
+
+          const removeImage = (index) => {
+            setFormData(prev => ({
+              ...prev,
+              gambar: prev.gambar.filter((_, i) => i !== index)
+            }));
           };
 
           const handleSubmit = (e) => {
@@ -325,21 +337,28 @@
 
                 {/* Muat Naik Gambar */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700">Gambar Aktiviti</label>
+                  <label className="block text-sm font-semibold text-gray-700">Gambar Aktiviti (Maksimum 6 gambar)</label>
                   <div className="mt-1 flex items-center gap-4">
-                    <label className="flex items-center gap-2 px-4 py-2 bg-white text-blue-600 rounded-md shadow-sm border border-blue-600 cursor-pointer hover:bg-blue-50 transition">
+                    <label className={`flex items-center gap-2 px-4 py-2 bg-white rounded-md shadow-sm border cursor-pointer transition ${formData.gambar.length >= 6 ? 'border-gray-300 text-gray-400 cursor-not-allowed' : 'border-blue-600 text-blue-600 hover:bg-blue-50'}`}>
                       <ImageIcon size={20} />
                       <span>Muat Naik Gambar</span>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                      <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} disabled={formData.gambar.length >= 6} />
                     </label>
-                    {formData.gambar && (
-                      <div className="text-green-600 flex items-center gap-1 text-sm font-medium">
-                        <CheckCircle size={16} /> Gambar dimuat naik
-                      </div>
-                    )}
+                    <div className="text-sm font-medium text-gray-600">
+                      {formData.gambar.length} / 6 gambar dimuat naik
+                    </div>
                   </div>
-                  {formData.gambar && (
-                    <img src={formData.gambar} alt="Preview" className="mt-3 h-32 object-contain border rounded-md shadow-sm" />
+                  {formData.gambar.length > 0 && (
+                    <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {formData.gambar.map((src, idx) => (
+                        <div key={idx} className="relative group aspect-[4/3] border rounded-md shadow-sm overflow-hidden">
+                          <img src={src} alt={`Preview ${idx+1}`} className="w-full h-full object-cover" />
+                          <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md font-bold text-xs">
+                            X
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
 
@@ -432,97 +451,97 @@
 
                 <div className="bg-white p-8 md:p-12 shadow-lg print:shadow-none print:p-0 w-full min-h-[1056px] text-black relative" style={{ fontFamily: 'Arial, sans-serif' }}>
                   
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="w-24 h-24 flex items-center justify-center overflow-hidden">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="w-20 h-20 flex items-center justify-center overflow-hidden">
                       <img 
-                        src="/logo-skpk-miri.png" 
+                        src="logo.png" 
                         alt="Logo SKPK Miri" 
                         onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} 
                         className="w-full h-full object-contain" 
                       />
-                      <div className="w-full h-full border-2 border-black hidden flex-col items-center justify-center text-center text-xs font-bold bg-gray-100">
+                      <div className="w-full h-full border-2 border-black hidden flex-col items-center justify-center text-center text-[10px] font-bold bg-gray-100">
                         LOGO<br/>SKPK MIRI
                       </div>
                     </div>
-                    <h1 className="text-center font-bold text-lg md:text-xl underline underline-offset-4 decoration-2 flex-1">ONE PAGE REPORT</h1>
-                    <div className="w-24 h-24"></div> 
+                    <h1 className="text-center font-bold text-lg underline underline-offset-4 decoration-2 flex-1">ONE PAGE REPORT</h1>
+                    <div className="w-20 h-20"></div> 
                   </div>
                   
-                  <table className="w-full border-collapse border-2 border-black text-sm text-left">
+                  <table className="w-full border-collapse border-2 border-black text-xs text-left">
                     <tbody>
                       <tr>
-                        <td className="border-2 border-black p-2 font-bold w-1/4 align-top">Program</td>
-                        <td className="border-2 border-black p-2 align-top" colSpan="2">{r.program}</td>
+                        <td className="border-2 border-black p-1.5 font-bold w-1/4 align-top">Program</td>
+                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">{r.program}</td>
                       </tr>
                       <tr>
-                        <td className="border-2 border-black p-2 font-bold align-top">Unit / Panitia</td>
-                        <td className="border-2 border-black p-2 align-top" colSpan="2">{r.panitia}</td>
+                        <td className="border-2 border-black p-1.5 font-bold align-top">Unit / Panitia</td>
+                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">{r.panitia}</td>
                       </tr>
                       <tr>
-                        <td className="border-2 border-black p-2 font-bold align-top">Tarikh</td>
-                        <td className="border-2 border-black p-2 align-top" colSpan="2">{r.tarikh}</td>
+                        <td className="border-2 border-black p-1.5 font-bold align-top">Tarikh</td>
+                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">{r.tarikh}</td>
                       </tr>
                       <tr>
-                        <td className="border-2 border-black p-2 font-bold align-top">Masa</td>
-                        <td className="border-2 border-black p-2 align-top" colSpan="2">{r.masa}</td>
+                        <td className="border-2 border-black p-1.5 font-bold align-top">Masa</td>
+                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">{r.masa}</td>
                       </tr>
                       <tr>
-                        <td className="border-2 border-black p-2 font-bold align-top">Tempat</td>
-                        <td className="border-2 border-black p-2 align-top" colSpan="2">{r.tempat}</td>
+                        <td className="border-2 border-black p-1.5 font-bold align-top">Tempat</td>
+                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">{r.tempat}</td>
                       </tr>
 
                       <tr>
-                        <td className="border-2 border-black p-2 font-bold align-top h-24">Fokus</td>
-                        <td className="border-2 border-black p-2 align-top" colSpan="2">
-                          <div className="flex flex-col md:flex-row gap-4 h-full">
-                            <div className="flex-1 border-r-0 md:border-r border-black md:pr-4">
-                              <span className="font-bold block mb-1">Isu</span>
-                              <p className="whitespace-pre-wrap min-h-[4rem]">{r.isu}</p>
+                        <td className="border-2 border-black p-1.5 font-bold align-top h-auto">Fokus</td>
+                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">
+                          <div className="flex flex-col md:flex-row gap-2 h-full">
+                            <div className="flex-1 border-r-0 md:border-r border-black md:pr-2">
+                              <span className="font-bold block mb-0.5">Isu</span>
+                              <p className="whitespace-pre-wrap min-h-[3rem] leading-snug">{r.isu}</p>
                             </div>
-                            <div className="flex-1 md:pl-2">
-                              <span className="font-bold block mb-1">Objektif</span>
-                              <p className="whitespace-pre-wrap min-h-[4rem]">{r.objektif}</p>
+                            <div className="flex-1 md:pl-1">
+                              <span className="font-bold block mb-0.5">Objektif</span>
+                              <p className="whitespace-pre-wrap min-h-[3rem] leading-snug">{r.objektif}</p>
                             </div>
                           </div>
                         </td>
                       </tr>
 
                       <tr>
-                        <td className="border-2 border-black p-2 font-bold align-top h-16">Interprestasi</td>
-                        <td className="border-2 border-black p-2 align-top" colSpan="2">
-                          <p className="whitespace-pre-wrap">{r.interprestasi}</p>
+                        <td className="border-2 border-black p-1.5 font-bold align-top h-auto">Interprestasi</td>
+                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">
+                          <p className="whitespace-pre-wrap leading-snug">{r.interprestasi}</p>
                         </td>
                       </tr>
 
                       <tr>
-                        <td className="border-2 border-black p-2 font-bold align-top h-24">Hasil perkongsian</td>
-                        <td className="border-2 border-black p-2 align-top" colSpan="2">
-                          <p className="whitespace-pre-wrap">{r.hasil}</p>
+                        <td className="border-2 border-black p-1.5 font-bold align-top h-auto">Hasil perkongsian</td>
+                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">
+                          <p className="whitespace-pre-wrap leading-snug">{r.hasil}</p>
                         </td>
                       </tr>
 
                       <tr>
                         <td className="border-2 border-black p-0 align-top" colSpan="3">
-                          <div className="flex flex-col md:flex-row w-full text-xs">
-                            <div className="flex-1 p-2 border-b-2 md:border-b-0 md:border-r-2 border-black">
-                              <span className="font-bold block mb-6">Disediakan oleh:</span>
-                              <div className="grid grid-cols-[50px_5px_1fr] gap-1">
+                          <div className="flex flex-col md:flex-row w-full text-[11px]">
+                            <div className="flex-1 p-1.5 border-b-2 md:border-b-0 md:border-r-2 border-black">
+                              <span className="font-bold block mb-4">Disediakan oleh:</span>
+                              <div className="grid grid-cols-[50px_5px_1fr] gap-0.5">
                                 <span className="font-bold">Nama</span><span>:</span><span className="uppercase">{r.disediakanOleh}</span>
                                 <span className="font-bold">Jawatan</span><span>:</span><span>{r.jawatanDisediakan}</span>
                                 <span className="font-bold">Tarikh</span><span>:</span><span>{r.tarikhDisediakan}</span>
                               </div>
                             </div>
-                            <div className="flex-1 p-2 border-b-2 md:border-b-0 md:border-r-2 border-black">
-                              <span className="font-bold block mb-6">Disemak oleh:</span>
-                              <div className="grid grid-cols-[50px_5px_1fr] gap-1">
+                            <div className="flex-1 p-1.5 border-b-2 md:border-b-0 md:border-r-2 border-black">
+                              <span className="font-bold block mb-4">Disemak oleh:</span>
+                              <div className="grid grid-cols-[50px_5px_1fr] gap-0.5">
                                 <span className="font-bold">Nama</span><span>:</span><span className="uppercase">{r.disemakOleh}</span>
                                 <span className="font-bold">Jawatan</span><span>:</span><span>{r.jawatanDisemak}</span>
                                 <span className="font-bold">Tarikh</span><span>:</span><span>{r.tarikhDisemak}</span>
                               </div>
                             </div>
-                            <div className="flex-1 p-2">
-                              <span className="font-bold block mb-6">Disahkan oleh:</span>
-                              <div className="grid grid-cols-[50px_5px_1fr] gap-1">
+                            <div className="flex-1 p-1.5">
+                              <span className="font-bold block mb-4">Disahkan oleh:</span>
+                              <div className="grid grid-cols-[50px_5px_1fr] gap-0.5">
                                 <span className="font-bold">Nama</span><span>:</span><span className="uppercase">{r.disahkanOleh}</span>
                                 <span className="font-bold">Jawatan</span><span>:</span><span>{r.jawatanDisahkan}</span>
                                 <span className="font-bold">Tarikh</span><span>:</span><span>{r.tarikhDisahkan}</span>
@@ -533,12 +552,18 @@
                       </tr>
 
                       <tr>
-                        <td className="border-2 border-black p-2 font-bold align-top h-48">Gambar</td>
-                        <td className="border-2 border-black p-2 align-top text-center" colSpan="2">
-                          {r.gambar ? (
-                            <img src={r.gambar} alt="Gambar Program" className="max-h-[250px] mx-auto object-contain p-2" />
+                        <td className="border-2 border-black p-1.5 font-bold align-top">Gambar</td>
+                        <td className="border-2 border-black p-1.5 align-top text-center" colSpan="2">
+                          {r.gambar && r.gambar.length > 0 ? (
+                            <div className="grid grid-cols-3 gap-1">
+                              {r.gambar.map((src, idx) => (
+                                <div key={idx} className="aspect-[4/3] border border-gray-300 overflow-hidden flex items-center justify-center bg-gray-50">
+                                  <img src={src} alt={`Gambar ${idx+1}`} className="w-full h-full object-cover" />
+                                </div>
+                              ))}
+                            </div>
                           ) : (
-                            <div className="h-[150px] flex items-center justify-center text-gray-400 italic">
+                            <div className="py-8 flex items-center justify-center text-gray-400 italic">
                               Tiada gambar disertakan
                             </div>
                           )}
