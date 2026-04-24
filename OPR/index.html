@@ -5,12 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem eOPR SKPK Miri</title>
     
+    <!-- Memuatkan Tailwind CSS untuk rekaan -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Memuatkan React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     
+    <!-- Memuatkan Babel untuk membaca sintaks JSX dalam pelayar -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Memuatkan Firebase Modul (v11) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // Konfigurasi Firebase dari pengguna
+        const firebaseConfig = {
+            apiKey: "AIzaSyDgRIFFYuObFpWXUUjMw4HyONEiqeYrabg",
+            authDomain: "eoprskpkmiri.firebaseapp.com",
+            projectId: "eoprskpkmiri",
+            storageBucket: "eoprskpkmiri.firebasestorage.app",
+            messagingSenderId: "507515031308",
+            appId: "1:507515031308:web:f742c066813227aeda0329",
+            measurementId: "G-JB3FTCGDYY"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Dedahkan fungsi kepada React (melalui tingkap/window global)
+        window.firebaseDB = db;
+        window.firebaseAuth = auth;
+        window.firebaseTools = { collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, signInAnonymously };
+    </script>
 
     <style>
         /* Tetapan cetakan PDF ke saiz A4 dan skala automatik 85% */
@@ -22,7 +53,7 @@
             body { 
                 -webkit-print-color-adjust: exact !important; 
                 print-color-adjust: exact !important; 
-                zoom: 0.85; /* Skala secara automatik ke 85% */
+                zoom: 0.85; 
             }
             .print\:hidden { display: none !important; }
             .print\:shadow-none { box-shadow: none !important; }
@@ -37,7 +68,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useRef } = React;
+        const { useState, useRef, useEffect } = React;
 
         // --- Ikon SVG Dalam Talian ---
         const FileText = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>;
@@ -48,7 +79,7 @@
         const ImageIcon = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>;
         const CheckCircle = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
         const Pencil = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>;
-
+        const PenTool = ({ size = 24, className = "" }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>;
 
         // Senarai nama guru
         const senaraiGuru = [
@@ -66,12 +97,89 @@
           "ALEXANDER LIPA ANAK RANTIE"
         ];
 
+        // Komponen Pad Tandatangan
+        const SignaturePad = ({ onSave, onCancel, title }) => {
+            const canvasRef = useRef(null);
+            const [isDrawing, setIsDrawing] = useState(false);
+
+            const startDrawing = (e) => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                ctx.beginPath();
+                ctx.moveTo(clientX - rect.left, clientY - rect.top);
+                setIsDrawing(true);
+            };
+
+            const draw = (e) => {
+                if (!isDrawing) return;
+                e.preventDefault(); 
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                ctx.lineTo(clientX - rect.left, clientY - rect.top);
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            };
+
+            const stopDrawing = () => setIsDrawing(false);
+
+            const clear = () => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            };
+
+            const save = () => {
+                const canvas = canvasRef.current;
+                // Hanya simpan jika ada lukisan, fungsi asas toDataURL
+                onSave(canvas.toDataURL('image/png'));
+            };
+
+            return (
+                <div className="border p-6 bg-white rounded-lg shadow-xl text-center w-full max-w-md mx-auto">
+                    <h4 className="font-bold mb-4 text-gray-800 text-lg flex items-center justify-center gap-2">
+                        <PenTool size={20} /> {title}
+                    </h4>
+                    <div className="bg-gray-50 border-2 border-dashed border-gray-400 rounded-md mb-4 touch-none overflow-hidden inline-block">
+                        <canvas 
+                            ref={canvasRef}
+                            width={350}
+                            height={150}
+                            className="bg-transparent cursor-crosshair touch-none"
+                            onMouseDown={startDrawing}
+                            onMouseMove={draw}
+                            onMouseUp={stopDrawing}
+                            onMouseOut={stopDrawing}
+                            onTouchStart={startDrawing}
+                            onTouchMove={draw}
+                            onTouchEnd={stopDrawing}
+                        />
+                    </div>
+                    <div className="flex justify-center gap-3">
+                        <button onClick={clear} className="px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded hover:bg-gray-300">Padam</button>
+                        <button onClick={onCancel} className="px-4 py-2 bg-red-100 text-red-700 font-medium rounded hover:bg-red-200">Batal</button>
+                        <button onClick={save} className="px-4 py-2 bg-green-600 text-white font-medium rounded hover:bg-green-700">Simpan T/Tangan</button>
+                    </div>
+                </div>
+            );
+        };
+
         function App() {
-          const [activeTab, setActiveTab] = useState('form'); 
+          const [activeTab, setActiveTab] = useState('list'); 
           const [reports, setReports] = useState([]);
           const [currentReport, setCurrentReport] = useState(null);
+          const [firebaseReady, setFirebaseReady] = useState(false);
+          const [signingRole, setSigningRole] = useState(null); // 'semak' atau 'sah'
+          const [isSaving, setIsSaving] = useState(false);
 
-          // Nilai lalai borang (Ditambah ID untuk fungsi Edit)
+          // Nilai lalai borang (Ditambah ruang tandatangan)
           const initialForm = {
             id: null,
             program: '',
@@ -95,13 +203,51 @@
             disemakOleh: '',
             jawatanDisemak: 'Penolong Kanan',
             tarikhDisemak: '',
+            signSemak: null, // Base64 Tandatangan Pentadbir 1
             disahkanOleh: senaraiGuru[0],
             jawatanDisahkan: 'Guru Besar',
             tarikhDisahkan: '',
-            gambar: []
+            signSah: null,   // Base64 Tandatangan Pentadbir 2
+            gambar: [],
+            timestamp: null
           };
 
           const [formData, setFormData] = useState(initialForm);
+
+          // Memuatkan Firebase
+          useEffect(() => {
+            const checkFirebase = setInterval(async () => {
+              if (window.firebaseDB && window.firebaseTools && window.firebaseAuth) {
+                clearInterval(checkFirebase);
+                try {
+                  // Log masuk secara anomimous untuk akses pangkalan data dengan selamat
+                  await window.firebaseTools.signInAnonymously(window.firebaseAuth);
+                  
+                  // Dapatkan rekod secara 'Real-Time'
+                  const repCol = window.firebaseTools.collection(window.firebaseDB, "eopr_reports");
+                  window.firebaseTools.onSnapshot(repCol, (snapshot) => {
+                    const rpts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    // Susun laporan paling baru di atas
+                    rpts.sort((a, b) => b.timestamp - a.timestamp);
+                    setReports(rpts);
+                  }, (err) => console.error("Error fetching data:", err));
+                  
+                  setFirebaseReady(true);
+                } catch (e) {
+                  console.error("Gagal initialize Firebase Auth", e);
+                }
+              }
+            }, 100);
+            return () => clearInterval(checkFirebase);
+          }, []);
+
+          // Memastikan currentReport sentiasa dikemas kini jika ada perubahan pada pangkalan data (cth: tandatangan ditambah)
+          useEffect(() => {
+            if (currentReport) {
+              const updated = reports.find(r => r.id === currentReport.id);
+              if (updated) setCurrentReport(updated);
+            }
+          }, [reports]);
 
           const handleInputChange = (e) => {
             const { name, value, type, checked } = e.target;
@@ -130,6 +276,7 @@
             }));
           };
 
+          // Memampatkan gambar sebelum disimpan untuk menjimatkan ruang Firestore (Had 1MB)
           const handleImageUpload = (e) => {
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
@@ -139,8 +286,29 @@
 
             filesToProcess.forEach(file => {
               const reader = new FileReader();
-              reader.onloadend = () => {
-                setFormData(prev => ({ ...prev, gambar: [...prev.gambar, reader.result].slice(0, 6) }));
+              reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  const MAX_WIDTH = 600;
+                  let width = img.width;
+                  let height = img.height;
+                  
+                  if (width > MAX_WIDTH) {
+                    height *= MAX_WIDTH / width;
+                    width = MAX_WIDTH;
+                  }
+                  
+                  canvas.width = width;
+                  canvas.height = height;
+                  const ctx = canvas.getContext('2d');
+                  ctx.drawImage(img, 0, 0, width, height);
+                  
+                  // Mampatkan ke JPEG berkualiti 60%
+                  const compressedData = canvas.toDataURL('image/jpeg', 0.6);
+                  setFormData(prev => ({ ...prev, gambar: [...prev.gambar, compressedData].slice(0, 6) }));
+                };
+                img.src = event.target.result;
               };
               reader.readAsDataURL(file);
             });
@@ -153,29 +321,80 @@
             }));
           };
 
-          const handleSubmit = (e) => {
+          const handleSubmit = async (e) => {
             e.preventDefault();
-            
-            if (formData.id) {
-              // Jika ini laporan yang sedang diedit (Update)
-              const updatedReports = reports.map(r => r.id === formData.id ? formData : r);
-              setReports(updatedReports);
-              setCurrentReport(formData);
-            } else {
-              // Jika ini laporan baharu (Create)
-              const newReport = { ...formData, id: Date.now() };
-              setReports([newReport, ...reports]);
-              setCurrentReport(newReport);
+            setIsSaving(true);
+            try {
+              if (formData.id) {
+                // Kemaskini rekod sedia ada
+                const docRef = window.firebaseTools.doc(window.firebaseDB, "eopr_reports", formData.id);
+                await window.firebaseTools.updateDoc(docRef, formData);
+                setCurrentReport(formData);
+              } else {
+                // Tambah rekod baru
+                const colRef = window.firebaseTools.collection(window.firebaseDB, "eopr_reports");
+                const docData = { ...formData, timestamp: Date.now() };
+                delete docData.id; // buang id null sebelum hantar
+                const docRef = await window.firebaseTools.addDoc(colRef, docData);
+                setCurrentReport({ ...docData, id: docRef.id });
+              }
+              setFormData(initialForm);
+              setActiveTab('preview'); 
+            } catch (err) {
+              console.error("Gagal menyimpan dokumen", err);
+              alert("Gagal menyimpan ke pangkalan data. Sila pastikan gambar tidak terlalu besar.");
+            } finally {
+              setIsSaving(false);
             }
-            
-            setFormData(initialForm);
-            setActiveTab('preview'); 
           };
 
           const handleEdit = (report) => {
             setFormData(report);
             setActiveTab('form');
           };
+
+          const deleteReport = async (id) => {
+            if (window.confirm("Adakah anda pasti mahu memadam laporan ini? Ia tidak boleh dikembalikan.")) {
+                try {
+                    const docRef = window.firebaseTools.doc(window.firebaseDB, "eopr_reports", id);
+                    await window.firebaseTools.deleteDoc(docRef);
+                    if (currentReport && currentReport.id === id) setActiveTab('list');
+                } catch (err) {
+                    console.error("Gagal memadam", err);
+                }
+            }
+          };
+
+          const handleSaveSignature = async (dataUrl) => {
+             if (!currentReport || !signingRole) return;
+             try {
+                const docRef = window.firebaseTools.doc(window.firebaseDB, "eopr_reports", currentReport.id);
+                const updateData = {};
+                const today = new Date().toISOString().split('T')[0]; // Format YYYY-MM-DD
+                
+                if (signingRole === 'semak') {
+                    updateData.signSemak = dataUrl;
+                    updateData.tarikhDisemak = today; // Auto kemaskini tarikh semasa sign
+                } else if (signingRole === 'sah') {
+                    updateData.signSah = dataUrl;
+                    updateData.tarikhDisahkan = today; // Auto kemaskini tarikh semasa sign
+                }
+                
+                await window.firebaseTools.updateDoc(docRef, updateData);
+                setSigningRole(null);
+             } catch (err) {
+                 console.error("Gagal menyimpan tandatangan", err);
+                 alert("Gagal menyimpan tandatangan.");
+             }
+          };
+
+          if (!firebaseReady) {
+            return (
+              <div className="min-h-screen flex items-center justify-center bg-gray-100">
+                <div className="text-center font-bold text-gray-500 animate-pulse">Menyambung ke Pangkalan Data Firebase...</div>
+              </div>
+            );
+          }
 
           const renderForm = () => (
             <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md mb-10">
@@ -382,9 +601,9 @@
                   )}
                 </div>
 
-                <button type="submit" className={`w-full text-white font-bold py-3 px-4 rounded-md shadow transition flex justify-center items-center gap-2 ${formData.id ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
-                  {formData.id ? <Pencil size={20} /> : <CheckCircle size={20} />}
-                  {formData.id ? 'Kemaskini & Jana Laporan' : 'Simpan & Jana Laporan'}
+                <button type="submit" disabled={isSaving} className={`w-full text-white font-bold py-3 px-4 rounded-md shadow transition flex justify-center items-center gap-2 ${formData.id ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-blue-600 hover:bg-blue-700'} ${isSaving ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                  {isSaving ? <span className="animate-spin text-xl">⏳</span> : (formData.id ? <Pencil size={20} /> : <CheckCircle size={20} />)}
+                  {isSaving ? 'Menyimpan...' : (formData.id ? 'Kemaskini & Jana Laporan' : 'Simpan & Jana Laporan')}
                 </button>
               </form>
             </div>
@@ -394,7 +613,7 @@
             <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md mb-10">
               <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-gray-800">
                 <List className="text-blue-600" />
-                Senarai Rekod OPR
+                Senarai Rekod OPR Atas Talian
               </h2>
               
               {reports.length === 0 ? (
@@ -407,7 +626,7 @@
                   <table className="min-w-full bg-white border border-gray-200">
                     <thead className="bg-gray-100">
                       <tr>
-                        <th className="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Tarikh</th>
+                        <th className="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700 w-1/4">Tarikh & Status</th>
                         <th className="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Program</th>
                         <th className="py-2 px-4 border-b text-left text-sm font-semibold text-gray-700">Disediakan Oleh</th>
                         <th className="py-2 px-4 border-b text-center text-sm font-semibold text-gray-700">Tindakan</th>
@@ -416,7 +635,13 @@
                     <tbody>
                       {reports.map((report) => (
                         <tr key={report.id} className="hover:bg-gray-50 transition">
-                          <td className="py-3 px-4 border-b text-sm text-gray-800">{report.tarikh || '-'}</td>
+                          <td className="py-3 px-4 border-b text-sm text-gray-800">
+                             <div className="font-medium">{report.tarikh || '-'}</div>
+                             <div className="flex gap-1 mt-1">
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${report.signSemak ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{report.signSemak ? 'Disemak' : 'Blm Disemak'}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${report.signSah ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{report.signSah ? 'Disahkan' : 'Blm Disahkan'}</span>
+                             </div>
+                          </td>
                           <td className="py-3 px-4 border-b text-sm text-gray-800 font-medium">{report.program}</td>
                           <td className="py-3 px-4 border-b text-sm text-gray-600">{report.disediakanOleh}</td>
                           <td className="py-3 px-4 border-b text-center space-x-2">
@@ -434,6 +659,13 @@
                               className="bg-yellow-100 text-yellow-700 px-3 py-1.5 rounded-md text-sm font-medium hover:bg-yellow-200 transition"
                             >
                               Kemaskini
+                            </button>
+                            <button 
+                              onClick={() => deleteReport(report.id)}
+                              className="bg-red-100 text-red-700 px-2 py-1.5 rounded-md text-sm font-medium hover:bg-red-200 transition"
+                              title="Padam"
+                            >
+                              x
                             </button>
                           </td>
                         </tr>
@@ -460,7 +692,18 @@
 
             return (
               <div className="max-w-4xl mx-auto mb-10">
-                <div className="mb-6 flex justify-between items-center print:hidden bg-white p-4 rounded-lg shadow-sm">
+                {/* Modal Tandatangan Pentadbir */}
+                {signingRole && (
+                    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 print:hidden">
+                        <SignaturePad 
+                            title={signingRole === 'semak' ? 'Tandatangan Penyemak (Pen. Kanan)' : 'Tandatangan Pengesah (Guru Besar)'}
+                            onSave={handleSaveSignature}
+                            onCancel={() => setSigningRole(null)}
+                        />
+                    </div>
+                )}
+
+                <div className="mb-6 flex flex-wrap justify-between items-center gap-3 print:hidden bg-white p-4 rounded-lg shadow-sm">
                   <div className="flex gap-2">
                     <button 
                       onClick={() => setActiveTab('list')}
@@ -469,7 +712,19 @@
                       <ArrowLeft size={18} /> Kembali
                     </button>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    {/* Butang e-Sign Pentadbir */}
+                    {!r.signSemak && (
+                        <button onClick={() => setSigningRole('semak')} className="bg-purple-100 text-purple-700 px-3 py-2 rounded-md shadow-sm hover:bg-purple-200 transition flex items-center gap-2 font-medium text-sm">
+                            <PenTool size={16} /> E-Sign Penyemak
+                        </button>
+                    )}
+                    {!r.signSah && (
+                        <button onClick={() => setSigningRole('sah')} className="bg-pink-100 text-pink-700 px-3 py-2 rounded-md shadow-sm hover:bg-pink-200 transition flex items-center gap-2 font-medium text-sm">
+                            <PenTool size={16} /> E-Sign Pengesah
+                        </button>
+                    )}
+
                     <button 
                       onClick={() => handleEdit(r)}
                       className="bg-yellow-500 text-white px-4 py-2 rounded-md shadow hover:bg-yellow-600 transition flex items-center gap-2 font-medium"
@@ -480,7 +735,7 @@
                       onClick={() => window.print()}
                       className="bg-green-600 text-white px-4 py-2 rounded-md shadow hover:bg-green-700 transition flex items-center gap-2 font-medium"
                     >
-                      <Printer size={18} /> Cetak ke PDF
+                      <Printer size={18} /> Cetak PDF
                     </button>
                   </div>
                 </div>
@@ -562,25 +817,34 @@
                       <tr>
                         <td className="border-2 border-black p-0 align-top" colSpan="3">
                           <div className="grid grid-cols-3 w-full text-[11px]">
-                            <div className="p-1.5 border-r-2 border-black">
-                              <span className="font-bold block mb-4">Disediakan oleh:</span>
-                              <div className="grid grid-cols-[50px_5px_1fr] gap-0.5">
+                            <div className="p-1.5 border-r-2 border-black flex flex-col justify-between">
+                              <span className="font-bold block mb-1">Disediakan oleh:</span>
+                              <div className="h-10 flex items-end">
+                                 {/* Kosong untuk tanda tangan basah jika perlu */}
+                              </div>
+                              <div className="grid grid-cols-[50px_5px_1fr] gap-0.5 mt-2">
                                 <span className="font-bold">Nama</span><span>:</span><span className="uppercase">{r.disediakanOleh}</span>
                                 <span className="font-bold">Jawatan</span><span>:</span><span>{r.jawatanDisediakan}</span>
                                 <span className="font-bold">Tarikh</span><span>:</span><span>{r.tarikhDisediakan}</span>
                               </div>
                             </div>
-                            <div className="p-1.5 border-r-2 border-black">
-                              <span className="font-bold block mb-4">Disemak oleh:</span>
-                              <div className="grid grid-cols-[50px_5px_1fr] gap-0.5">
+                            <div className="p-1.5 border-r-2 border-black flex flex-col justify-between">
+                              <span className="font-bold block mb-1">Disemak oleh:</span>
+                              <div className="h-10 flex items-end justify-start">
+                                 {r.signSemak && <img src={r.signSemak} alt="Sign Penolong Kanan" className="max-h-12 mix-blend-multiply" />}
+                              </div>
+                              <div className="grid grid-cols-[50px_5px_1fr] gap-0.5 mt-2">
                                 <span className="font-bold">Nama</span><span>:</span><span className="uppercase">{r.disemakOleh}</span>
                                 <span className="font-bold">Jawatan</span><span>:</span><span>{r.jawatanDisemak}</span>
                                 <span className="font-bold">Tarikh</span><span>:</span><span>{r.tarikhDisemak}</span>
                               </div>
                             </div>
-                            <div className="p-1.5">
-                              <span className="font-bold block mb-4">Disahkan oleh:</span>
-                              <div className="grid grid-cols-[50px_5px_1fr] gap-0.5">
+                            <div className="p-1.5 flex flex-col justify-between">
+                              <span className="font-bold block mb-1">Disahkan oleh:</span>
+                              <div className="h-10 flex items-end justify-start">
+                                 {r.signSah && <img src={r.signSah} alt="Sign Guru Besar" className="max-h-12 mix-blend-multiply" />}
+                              </div>
+                              <div className="grid grid-cols-[50px_5px_1fr] gap-0.5 mt-2">
                                 <span className="font-bold">Nama</span><span>:</span><span className="uppercase">{r.disahkanOleh}</span>
                                 <span className="font-bold">Jawatan</span><span>:</span><span>{r.jawatanDisahkan}</span>
                                 <span className="font-bold">Tarikh</span><span>:</span><span>{r.tarikhDisahkan}</span>
@@ -646,7 +910,7 @@
                   <div className="flex gap-2">
                     <button 
                       onClick={() => {
-                        setFormData(initialForm); // Reset borang apabila butang "Borang Baru" ditekan
+                        setFormData(initialForm); 
                         setActiveTab('form');
                       }}
                       className={`px-4 py-2 rounded-md font-medium flex items-center gap-2 transition ${activeTab === 'form' && !formData.id ? 'bg-blue-600 shadow-inner' : 'hover:bg-blue-700'}`}
