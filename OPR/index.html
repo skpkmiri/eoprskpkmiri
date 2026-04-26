@@ -216,7 +216,7 @@
             isu: '',
             objektif: '',
             interprestasi: '',
-            hasil: 'Hasil perbincangan ini, ',
+            hasil: 'Hasil aktiviti ini, ',
             disediakanOleh: '',
             jawatanDisediakan: 'Guru',
             tarikhDisediakan: '',
@@ -660,11 +660,11 @@
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Interprestasi</label>
+                    <label className="block text-sm font-semibold text-gray-700">Huraian Aktiviti</label>
                     <textarea name="interprestasi" value={formData.interprestasi} onChange={handleInputChange} rows="2" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700">Hasil Perkongsian</label>
+                    <label className="block text-sm font-semibold text-gray-700">Hasil Aktiviti</label>
                     <textarea name="hasil" value={formData.hasil} onChange={handleInputChange} rows="3" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
                   </div>
                 </div>
@@ -988,30 +988,14 @@
                       </tr>
 
                       <tr>
-                        <td className="border-2 border-black p-1.5 font-bold align-top h-auto">Fokus</td>
-                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">
-                          <div className="flex flex-col md:flex-row gap-2 h-full">
-                            <div className="flex-1 border-r-0 md:border-r border-black md:pr-2">
-                              <span className="font-bold block mb-0.5">Isu</span>
-                              <p className="whitespace-pre-wrap min-h-[3rem] leading-snug">{r.isu}</p>
-                            </div>
-                            <div className="flex-1 md:pl-1">
-                              <span className="font-bold block mb-0.5">Objektif</span>
-                              <p className="whitespace-pre-wrap min-h-[3rem] leading-snug">{r.objektif}</p>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-
-                      <tr>
-                        <td className="border-2 border-black p-1.5 font-bold align-top h-auto">Interprestasi</td>
+                        <td className="border-2 border-black p-1.5 font-bold align-top h-auto">Huraian aktiviti</td>
                         <td className="border-2 border-black p-1.5 align-top" colSpan="2">
                           <p className="whitespace-pre-wrap leading-snug">{r.interprestasi}</p>
                         </td>
                       </tr>
 
                       <tr>
-                        <td className="border-2 border-black p-1.5 font-bold align-top h-auto">Hasil perkongsian</td>
+                        <td className="border-2 border-black p-1.5 font-bold align-top h-auto">Hasil aktiviti</td>
                         <td className="border-2 border-black p-1.5 align-top" colSpan="2">
                           <p className="whitespace-pre-wrap leading-snug">{r.hasil}</p>
                         </td>
@@ -1146,7 +1130,7 @@
               </main>
               
               <footer className="text-center py-6 text-gray-500 text-sm print:hidden mt-auto">
-                &copy; {new Date().getFullYear()} e-OPR | Sedia Berkhidmat
+                &copy; {new Date().getFullYear()} e-OPR | SKPK Miri
               </footer>
             </div>
           );
