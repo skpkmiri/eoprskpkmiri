@@ -141,7 +141,6 @@
 
             const save = () => {
                 const canvas = canvasRef.current;
-                // Hanya simpan jika ada lukisan, fungsi asas toDataURL
                 onSave(canvas.toDataURL('image/png'), signDate);
             };
 
@@ -189,24 +188,28 @@
           const [reports, setReports] = useState([]);
           const [currentReport, setCurrentReport] = useState(null);
           const [firebaseReady, setFirebaseReady] = useState(false);
-          const [signingRole, setSigningRole] = useState(null); // 'semak' atau 'sah'
+          const [signingRole, setSigningRole] = useState(null); 
           const [isSaving, setIsSaving] = useState(false);
           
           // State untuk maklum balas
           const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
           const [tempFeedback, setTempFeedback] = useState('');
 
-          // Nilai lalai borang (Ditambah ruang tandatangan & maklumbalas)
+          // Nilai lalai borang (staffTidakHadir kini berbentuk Array)
           const initialForm = {
             id: null,
             program: '',
             panitia: '',
             penyelaras: '',
             kehadiranGuru: [],
+            staffTidakHadir: [], 
             kehadiranIbuBapa: false,
             kehadiranMurid: false,
+            jumlahMurid: '',
             kehadiranSekolahLain: false,
             namaSekolahLain: '',
+            kehadiranAgensiLuar: false,
+            namaAgensiLuar: '',
             tarikh: '',
             masa: '',
             tempat: '',
@@ -217,16 +220,16 @@
             disediakanOleh: '',
             jawatanDisediakan: 'Guru',
             tarikhDisediakan: '',
-            signDisediakan: null, // Base64 Tandatangan Pelapor
+            signDisediakan: null, 
             disemakOleh: '',
             jawatanDisemak: 'Penolong Kanan',
             tarikhDisemak: '',
-            signSemak: null, // Base64 Tandatangan Pentadbir 1
+            signSemak: null, 
             disahkanOleh: senaraiGuru[0],
             jawatanDisahkan: 'Guru Besar',
             tarikhDisahkan: '',
-            signSah: null,   // Base64 Tandatangan Pentadbir 2
-            maklumBalas: '', // Tambahan untuk Maklum Balas Pentadbir
+            signSah: null,   
+            maklumBalas: '', 
             gambar: [],
             timestamp: null
           };
@@ -239,14 +242,11 @@
               if (window.firebaseDB && window.firebaseTools && window.firebaseAuth) {
                 clearInterval(checkFirebase);
                 try {
-                  // Log masuk secara anomimous untuk akses pangkalan data dengan selamat
                   await window.firebaseTools.signInAnonymously(window.firebaseAuth);
                   
-                  // Dapatkan rekod secara 'Real-Time'
                   const repCol = window.firebaseTools.collection(window.firebaseDB, "eopr_reports");
                   window.firebaseTools.onSnapshot(repCol, (snapshot) => {
                     const rpts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    // Susun laporan paling baru di atas
                     rpts.sort((a, b) => b.timestamp - a.timestamp);
                     setReports(rpts);
                   }, (err) => console.error("Error fetching data:", err));
@@ -260,7 +260,6 @@
             return () => clearInterval(checkFirebase);
           }, []);
 
-          // Memastikan currentReport sentiasa dikemas kini jika ada perubahan pada pangkalan data (cth: tandatangan ditambah)
           useEffect(() => {
             if (currentReport) {
               const updated = reports.find(r => r.id === currentReport.id);
@@ -291,23 +290,46 @@
           const handleGuruCheckbox = (guru) => {
             setFormData(prev => {
               const hadir = prev.kehadiranGuru.includes(guru);
+              const newKehadiran = hadir 
+                  ? prev.kehadiranGuru.filter(g => g !== guru)
+                  : [...prev.kehadiranGuru, guru];
+              
+              // Buang dari senarai tidak hadir secara automatik jika ditanda hadir semula
+              const currentTidakHadirArray = Array.isArray(prev.staffTidakHadir) ? prev.staffTidakHadir : [];
+              const newTidakHadir = currentTidakHadirArray.filter(g => !newKehadiran.includes(g));
+
               return {
                 ...prev,
-                kehadiranGuru: hadir 
-                  ? prev.kehadiranGuru.filter(g => g !== guru)
-                  : [...prev.kehadiranGuru, guru]
+                kehadiranGuru: newKehadiran,
+                staffTidakHadir: newTidakHadir
               };
             });
           };
 
           const handleSelectAllGuru = () => {
-            setFormData(prev => ({
-              ...prev,
-              kehadiranGuru: prev.kehadiranGuru.length === senaraiGuru.length ? [] : [...senaraiGuru]
-            }));
+            setFormData(prev => {
+              const isAllSelected = prev.kehadiranGuru.length === senaraiGuru.length;
+              return {
+                ...prev,
+                kehadiranGuru: isAllSelected ? [] : [...senaraiGuru],
+                staffTidakHadir: isAllSelected ? (Array.isArray(prev.staffTidakHadir) ? prev.staffTidakHadir : []) : []
+              };
+            });
           };
 
-          // Memampatkan gambar sebelum disimpan untuk menjimatkan ruang Firestore (Had 1MB)
+          const handleTidakHadirCheckbox = (guru) => {
+            setFormData(prev => {
+                const currentArray = Array.isArray(prev.staffTidakHadir) ? prev.staffTidakHadir : [];
+                const isSelected = currentArray.includes(guru);
+                return {
+                    ...prev,
+                    staffTidakHadir: isSelected 
+                        ? currentArray.filter(g => g !== guru)
+                        : [...currentArray, guru]
+                };
+            });
+          };
+
           const handleImageUpload = (e) => {
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
@@ -335,7 +357,6 @@
                   const ctx = canvas.getContext('2d');
                   ctx.drawImage(img, 0, 0, width, height);
                   
-                  // Mampatkan ke JPEG berkualiti 60%
                   const compressedData = canvas.toDataURL('image/jpeg', 0.6);
                   setFormData(prev => ({ ...prev, gambar: [...prev.gambar, compressedData].slice(0, 6) }));
                 };
@@ -357,15 +378,13 @@
             setIsSaving(true);
             try {
               if (formData.id) {
-                // Kemaskini rekod sedia ada
                 const docRef = window.firebaseTools.doc(window.firebaseDB, "eopr_reports", formData.id);
                 await window.firebaseTools.updateDoc(docRef, formData);
                 setCurrentReport(formData);
               } else {
-                // Tambah rekod baru
                 const colRef = window.firebaseTools.collection(window.firebaseDB, "eopr_reports");
                 const docData = { ...formData, timestamp: Date.now() };
-                delete docData.id; // buang id null sebelum hantar
+                delete docData.id; 
                 const docRef = await window.firebaseTools.addDoc(colRef, docData);
                 setCurrentReport({ ...docData, id: docRef.id });
               }
@@ -380,7 +399,12 @@
           };
 
           const handleEdit = (report) => {
-            setFormData(report);
+            const reportToEdit = { ...report };
+            // Pastikan jika fail lama guna string utk Tidak Hadir, kita tukar ke array kosong supaya tidak rosak UI checkbox
+            if (typeof reportToEdit.staffTidakHadir === 'string') {
+                reportToEdit.staffTidakHadir = []; 
+            }
+            setFormData(reportToEdit);
             setActiveTab('form');
           };
 
@@ -404,13 +428,13 @@
                 
                 if (signingRole === 'semak') {
                     updateData.signSemak = dataUrl;
-                    updateData.tarikhDisemak = selectedDate; // Menggunakan tarikh dari input modal
+                    updateData.tarikhDisemak = selectedDate; 
                 } else if (signingRole === 'sah') {
                     updateData.signSah = dataUrl;
-                    updateData.tarikhDisahkan = selectedDate; // Menggunakan tarikh dari input modal
+                    updateData.tarikhDisahkan = selectedDate; 
                 } else if (signingRole === 'disediakan') {
                     updateData.signDisediakan = dataUrl;
-                    updateData.tarikhDisediakan = selectedDate; // Menggunakan tarikh dari input modal
+                    updateData.tarikhDisediakan = selectedDate; 
                 }
                 
                 await window.firebaseTools.updateDoc(docRef, updateData);
@@ -495,6 +519,32 @@
                     </div>
                   </div>
 
+                  <div className="mb-4 pt-4 border-t border-gray-200">
+                    <div className="flex justify-between items-center mb-2">
+                        <label className="block text-sm font-semibold text-gray-700">Senarai Staf / Guru Tidak Hadir</label>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-2">Tandakan pada nama yang ingin direkodkan sebagai Tidak Hadir ke program ini (senarai diambil daripada staf yang tidak ditanda hadir di atas).</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-3 border border-gray-300 rounded-md bg-white shadow-sm">
+                      {senaraiGuru.filter(g => !formData.kehadiranGuru.includes(g)).length > 0 ? (
+                          senaraiGuru
+                              .filter(g => !formData.kehadiranGuru.includes(g))
+                              .map((guru, idx) => (
+                                <label key={`tdk-hadir-${idx}`} className="flex items-start gap-2 text-sm cursor-pointer hover:bg-red-50 p-1.5 rounded transition">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={Array.isArray(formData.staffTidakHadir) && formData.staffTidakHadir.includes(guru)}
+                                    onChange={() => handleTidakHadirCheckbox(guru)}
+                                    className="mt-0.5 rounded text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer"
+                                  />
+                                  <span className="leading-tight text-gray-800">{guru}</span>
+                                </label>
+                              ))
+                      ) : (
+                          <div className="text-sm text-gray-500 italic col-span-full">Semua staf telah ditanda hadir.</div>
+                      )}
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Lain-lain Kehadiran</label>
                     <div className="space-y-3 p-4 bg-white border border-gray-300 rounded-md shadow-sm">
@@ -508,16 +558,29 @@
                         />
                         <span className="font-medium text-gray-800">1. Ibu bapa dan penjaga</span>
                       </label>
-                      <label className="flex items-center gap-2 text-sm cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          name="kehadiranMurid"
-                          checked={formData.kehadiranMurid}
-                          onChange={handleInputChange}
-                          className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
-                        />
-                        <span className="font-medium text-gray-800">2. Murid-murid</span>
-                      </label>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            name="kehadiranMurid"
+                            checked={formData.kehadiranMurid}
+                            onChange={handleInputChange}
+                            className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                          />
+                          <span className="font-medium text-gray-800">2. Murid-murid</span>
+                        </label>
+                        {formData.kehadiranMurid && (
+                          <input 
+                            type="text" 
+                            name="jumlahMurid"
+                            value={formData.jumlahMurid || ''}
+                            onChange={handleInputChange}
+                            placeholder="Sila nyatakan jumlah murid..." 
+                            className="border border-gray-300 rounded shadow-sm p-1.5 text-sm flex-1 max-w-sm"
+                            required={formData.kehadiranMurid}
+                          />
+                        )}
+                      </div>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <label className="flex items-center gap-2 text-sm cursor-pointer">
                           <input 
@@ -538,6 +601,29 @@
                             placeholder="Sila nyatakan nama sekolah..." 
                             className="border border-gray-300 rounded shadow-sm p-1.5 text-sm flex-1 max-w-sm"
                             required={formData.kehadiranSekolahLain}
+                          />
+                        )}
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            name="kehadiranAgensiLuar"
+                            checked={formData.kehadiranAgensiLuar}
+                            onChange={handleInputChange}
+                            className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                          />
+                          <span className="font-medium text-gray-800">4. Agensi Luar</span>
+                        </label>
+                        {formData.kehadiranAgensiLuar && (
+                          <input 
+                            type="text" 
+                            name="namaAgensiLuar"
+                            value={formData.namaAgensiLuar || ''}
+                            onChange={handleInputChange}
+                            placeholder="Sila nyatakan nama agensi luar..." 
+                            className="border border-gray-300 rounded shadow-sm p-1.5 text-sm flex-1 max-w-sm"
+                            required={formData.kehadiranAgensiLuar}
                           />
                         )}
                       </div>
@@ -593,7 +679,6 @@
                         {senaraiGuru.map((guru, idx) => <option key={`s-${idx}`} value={guru}>{guru}</option>)}
                       </select>
                       <input type="text" name="jawatanDisediakan" value={formData.jawatanDisediakan} onChange={handleInputChange} placeholder="Jawatan" className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
-                      <input type="date" name="tarikhDisediakan" value={formData.tarikhDisediakan} onChange={handleInputChange} className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
                     </div>
                   </div>
                   <div>
@@ -604,7 +689,6 @@
                         {senaraiGuru.slice(1, 4).map((guru, idx) => <option key={`sm-${idx}`} value={guru}>{guru}</option>)}
                       </select>
                       <input type="text" name="jawatanDisemak" value={formData.jawatanDisemak} onChange={handleInputChange} placeholder="Jawatan" className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
-                      <input type="date" name="tarikhDisemak" value={formData.tarikhDisemak} onChange={handleInputChange} className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
                     </div>
                   </div>
                   <div>
@@ -614,7 +698,6 @@
                         <option value={senaraiGuru[0]}>{senaraiGuru[0]}</option>
                       </select>
                       <input type="text" name="jawatanDisahkan" value={formData.jawatanDisahkan} onChange={handleInputChange} placeholder="Jawatan" className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
-                      <input type="date" name="tarikhDisahkan" value={formData.tarikhDisahkan} onChange={handleInputChange} className="block w-full border border-gray-300 rounded-md shadow-sm p-2 text-sm" />
                     </div>
                   </div>
                 </div>
@@ -693,7 +776,6 @@
                                     </>
                                 )}
                              </div>
-                             {/* Ruang paparan Maklum Balas di dalam jadual (Tidak keluar di PDF) */}
                              {report.maklumBalas && (
                                 <div className="mt-2 text-[11px] bg-yellow-50 p-1.5 rounded border border-yellow-200 text-yellow-800 leading-tight">
                                     <span className="font-bold flex items-center gap-1"><MessageSquare size={10} /> Maklum balas:</span>
@@ -711,7 +793,7 @@
                               }}
                               className="bg-blue-100 text-blue-700 px-3 py-1.5 rounded-md text-sm font-medium hover:bg-blue-200 transition"
                             >
-                              Lihat / Cetak
+                              Lihat
                             </button>
                             <button 
                               onClick={() => handleEdit(report)}
@@ -743,12 +825,25 @@
 
             let senaraiHadir = [...(r.kehadiranGuru || [])];
             if (r.kehadiranIbuBapa) senaraiHadir.push("Ibu bapa dan penjaga");
-            if (r.kehadiranMurid) senaraiHadir.push("Murid-murid");
+            if (r.kehadiranMurid) senaraiHadir.push(`Murid-murid ${r.jumlahMurid ? `(${r.jumlahMurid} orang)` : ''}`);
             if (r.kehadiranSekolahLain && r.namaSekolahLain) senaraiHadir.push(`Sekolah lain (${r.namaSekolahLain})`);
+            if (r.kehadiranAgensiLuar && r.namaAgensiLuar) senaraiHadir.push(`Agensi Luar (${r.namaAgensiLuar})`);
             
             const displayHadir = senaraiHadir.length > 0 
               ? senaraiHadir.map((nama, idx) => `${idx + 1}. ${nama}`).join('\n')
               : 'Tiada ahli yang hadir direkodkan.';
+
+            // Logik paparan balik "Tidak Hadir" (Menyokong laporan lama yang berupa String atau rekod baru berbentuk Array)
+            let tidakHadirDisplay = '';
+            if (Array.isArray(r.staffTidakHadir)) {
+                tidakHadirDisplay = r.staffTidakHadir.length > 0 
+                  ? r.staffTidakHadir.map((nama, idx) => `${idx + 1}. ${nama}`).join('\n')
+                  : null;
+            } else if (r.staffTidakHadir && r.staffTidakHadir.trim() !== '') {
+                tidakHadirDisplay = r.staffTidakHadir;
+            }
+
+            const isLengkapDisemak = Boolean(r.signSemak && r.signSah);
 
             return (
               <div className="max-w-4xl mx-auto mb-10">
@@ -803,7 +898,7 @@
                       <MessageSquare size={16} /> Maklum Balas
                     </button>
 
-                    {/* Butang e-Sign Pentadbir */}
+                    {/* Butang e-Sign */}
                     {!r.signDisediakan && (
                         <button onClick={() => setSigningRole('disediakan')} className="bg-blue-100 text-blue-700 px-3 py-2 rounded-md shadow-sm hover:bg-blue-200 transition flex items-center gap-2 font-medium text-sm">
                             <PenTool size={16} /> E-Sign Pelapor
@@ -822,16 +917,29 @@
 
                     <button 
                       onClick={() => handleEdit(r)}
-                      className="bg-yellow-500 text-white px-4 py-2 rounded-md shadow hover:bg-yellow-600 transition flex items-center gap-2 font-medium"
+                      className="bg-yellow-500 text-white px-4 py-2 rounded-md shadow hover:bg-yellow-600 transition flex items-center gap-2 font-medium text-sm"
                     >
                       <Pencil size={18} /> Kemaskini
                     </button>
-                    <button 
-                      onClick={() => window.print()}
-                      className="bg-green-600 text-white px-4 py-2 rounded-md shadow hover:bg-green-700 transition flex items-center gap-2 font-medium"
-                    >
-                      <Printer size={18} /> Cetak PDF
-                    </button>
+
+                    {/* Logik Butang Cetak */}
+                    {isLengkapDisemak ? (
+                        <button 
+                          onClick={() => window.print()}
+                          className="bg-green-600 text-white px-4 py-2 rounded-md shadow hover:bg-green-700 transition flex items-center gap-2 font-medium text-sm"
+                          title="Cetak PDF"
+                        >
+                          <Printer size={18} /> Cetak PDF
+                        </button>
+                    ) : (
+                        <button 
+                          onClick={() => alert('Maaf, hanya OPR yang telah lengkap disemak dan disahkan boleh dicetak.')}
+                          className="bg-gray-300 text-gray-500 px-4 py-2 rounded-md shadow cursor-not-allowed flex items-center gap-2 font-medium text-sm"
+                          title="Tandatangan Penyemak dan Pengesah diperlukan untuk mencetak"
+                        >
+                          <Printer size={18} /> Cetak PDF
+                        </button>
+                    )}
                   </div>
                 </div>
 
@@ -988,6 +1096,15 @@
                     <div className="whitespace-pre-wrap leading-relaxed pl-2 text-sm md:text-base font-medium">
                       {displayHadir}
                     </div>
+
+                    {tidakHadirDisplay && (
+                        <div className="mt-8 border-t-2 border-gray-300 pt-6">
+                            <h3 className="font-bold mb-4 text-lg text-red-700">Senarai Tidak Hadir:</h3>
+                            <div className="whitespace-pre-wrap leading-relaxed pl-2 text-sm md:text-base font-medium text-gray-800">
+                              {tidakHadirDisplay}
+                            </div>
+                        </div>
+                    )}
                   </div>
                 </div>
               </div>
