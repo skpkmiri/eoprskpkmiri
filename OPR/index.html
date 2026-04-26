@@ -899,21 +899,17 @@
                     </button>
 
                     {/* Butang e-Sign */}
-                    {!r.signDisediakan && (
-                        <button onClick={() => setSigningRole('disediakan')} className="bg-blue-100 text-blue-700 px-3 py-2 rounded-md shadow-sm hover:bg-blue-200 transition flex items-center gap-2 font-medium text-sm">
-                            <PenTool size={16} /> E-Sign Pelapor
-                        </button>
-                    )}
-                    {!r.signSemak && (
-                        <button onClick={() => setSigningRole('semak')} className="bg-purple-100 text-purple-700 px-3 py-2 rounded-md shadow-sm hover:bg-purple-200 transition flex items-center gap-2 font-medium text-sm">
-                            <PenTool size={16} /> E-Sign Penyemak
-                        </button>
-                    )}
-                    {!r.signSah && (
-                        <button onClick={() => setSigningRole('sah')} className="bg-pink-100 text-pink-700 px-3 py-2 rounded-md shadow-sm hover:bg-pink-200 transition flex items-center gap-2 font-medium text-sm">
-                            <PenTool size={16} /> E-Sign Pengesah
-                        </button>
-                    )}
+                    <button onClick={() => setSigningRole('disediakan')} className="bg-blue-100 text-blue-700 px-3 py-2 rounded-md shadow-sm hover:bg-blue-200 transition flex items-center gap-2 font-medium text-sm">
+                        <PenTool size={16} /> {r.signDisediakan ? 'Edit Sign Pelapor' : 'E-Sign Pelapor'}
+                    </button>
+
+                    <button onClick={() => setSigningRole('semak')} className="bg-purple-100 text-purple-700 px-3 py-2 rounded-md shadow-sm hover:bg-purple-200 transition flex items-center gap-2 font-medium text-sm">
+                        <PenTool size={16} /> {r.signSemak ? 'Edit Sign Penyemak' : 'E-Sign Penyemak'}
+                    </button>
+
+                    <button onClick={() => setSigningRole('sah')} className="bg-pink-100 text-pink-700 px-3 py-2 rounded-md shadow-sm hover:bg-pink-200 transition flex items-center gap-2 font-medium text-sm">
+                        <PenTool size={16} /> {r.signSah ? 'Edit Sign Pengesah' : 'E-Sign Pengesah'}
+                    </button>
 
                     <button 
                       onClick={() => handleEdit(r)}
