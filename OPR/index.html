@@ -195,7 +195,7 @@
           const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
           const [tempFeedback, setTempFeedback] = useState('');
 
-          // Nilai lalai borang (staffTidakHadir kini berbentuk Array)
+          // Nilai lalai borang
           const initialForm = {
             id: null,
             program: '',
@@ -294,7 +294,6 @@
                   ? prev.kehadiranGuru.filter(g => g !== guru)
                   : [...prev.kehadiranGuru, guru];
               
-              // Buang dari senarai tidak hadir secara automatik jika ditanda hadir semula
               const currentTidakHadirArray = Array.isArray(prev.staffTidakHadir) ? prev.staffTidakHadir : [];
               const newTidakHadir = currentTidakHadirArray.filter(g => !newKehadiran.includes(g));
 
@@ -400,7 +399,6 @@
 
           const handleEdit = (report) => {
             const reportToEdit = { ...report };
-            // Pastikan jika fail lama guna string utk Tidak Hadir, kita tukar ke array kosong supaya tidak rosak UI checkbox
             if (typeof reportToEdit.staffTidakHadir === 'string') {
                 reportToEdit.staffTidakHadir = []; 
             }
@@ -833,7 +831,6 @@
               ? senaraiHadir.map((nama, idx) => `${idx + 1}. ${nama}`).join('\n')
               : 'Tiada ahli yang hadir direkodkan.';
 
-            // Logik paparan balik "Tidak Hadir" (Menyokong laporan lama yang berupa String atau rekod baru berbentuk Array)
             let tidakHadirDisplay = '';
             if (Array.isArray(r.staffTidakHadir)) {
                 tidakHadirDisplay = r.staffTidakHadir.length > 0 
@@ -967,6 +964,10 @@
                         <td className="border-2 border-black p-1.5 align-top" colSpan="2">{r.program}</td>
                       </tr>
                       <tr>
+                        <td className="border-2 border-black p-1.5 font-bold align-top">Penyelaras</td>
+                        <td className="border-2 border-black p-1.5 align-top uppercase" colSpan="2">{r.penyelaras}</td>
+                      </tr>
+                      <tr>
                         <td className="border-2 border-black p-1.5 font-bold align-top">Unit / Panitia</td>
                         <td className="border-2 border-black p-1.5 align-top" colSpan="2">{r.panitia}</td>
                       </tr>
@@ -981,6 +982,22 @@
                       <tr>
                         <td className="border-2 border-black p-1.5 font-bold align-top">Tempat</td>
                         <td className="border-2 border-black p-1.5 align-top" colSpan="2">{r.tempat}</td>
+                      </tr>
+
+                      <tr>
+                        <td className="border-2 border-black p-1.5 font-bold align-top h-auto">Fokus</td>
+                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">
+                          <div className="flex flex-col md:flex-row gap-2 h-full">
+                            <div className="flex-1 border-r-0 md:border-r border-black md:pr-2">
+                              <span className="font-bold block mb-0.5">Isu</span>
+                              <p className="whitespace-pre-wrap min-h-[3rem] leading-snug">{r.isu}</p>
+                            </div>
+                            <div className="flex-1 md:pl-1">
+                              <span className="font-bold block mb-0.5">Objektif</span>
+                              <p className="whitespace-pre-wrap min-h-[3rem] leading-snug">{r.objektif}</p>
+                            </div>
+                          </div>
+                        </td>
                       </tr>
 
                       <tr>
@@ -1041,9 +1058,9 @@
                         <td className="border-2 border-black p-1.5 font-bold align-top">Gambar</td>
                         <td className="border-2 border-black p-1.5 align-top text-center" colSpan="2">
                           {r.gambar && r.gambar.length > 0 ? (
-                            <div className="grid grid-cols-3 gap-1">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-1">
                               {r.gambar.map((src, idx) => (
-                                <div key={idx} className="aspect-[4/3] border border-gray-300 overflow-hidden flex items-center justify-center bg-gray-50">
+                                <div key={idx} className="w-full aspect-[4/3] border border-gray-300 overflow-hidden flex items-center justify-center bg-gray-50">
                                   <img src={src} alt={`Gambar ${idx+1}`} className="w-full h-full object-cover" />
                                 </div>
                               ))}
@@ -1067,7 +1084,6 @@
                     <div className="grid grid-cols-[100px_10px_1fr] gap-1 mb-2 text-sm md:text-base">
                       <span className="font-bold">Program</span><span>:</span><span className="uppercase">{r.program}</span>
                       <span className="font-bold">Tarikh</span><span>:</span><span>{r.tarikh}</span>
-                      <span className="font-bold">Penyelaras</span><span>:</span><span className="uppercase">{r.penyelaras}</span>
                     </div>
                   </div>
 
