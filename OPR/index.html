@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     
     <!-- Memuatkan Babel untuk membaca sintaks JSX dalam pelayar -->
-    <script src="https://unpkg.com/@babel/standalone@7.23.0/babel.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <!-- Memuatkan Firebase Modul (v11) -->
     <script type="module">
@@ -195,7 +195,7 @@
           const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
           const [tempFeedback, setTempFeedback] = useState('');
 
-          // Nilai lalai borang
+          // Nilai lalai borang 
           const initialForm = {
             id: null,
             program: '',
@@ -716,8 +716,8 @@
                   {formData.gambar.length > 0 && (
                     <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3">
                       {formData.gambar.map((src, idx) => (
-                        <div key={idx} className="relative group aspect-[4/3] border rounded-md shadow-sm overflow-hidden">
-                          <img src={src} alt={`Preview ${idx+1}`} className="w-full h-full object-cover" />
+                        <div key={idx} className="relative group aspect-[4/3] border rounded-md shadow-sm overflow-hidden bg-white">
+                          <img src={src} alt={`Preview ${idx+1}`} className="w-full h-full object-contain" />
                           <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-md font-bold text-xs">
                             X
                           </button>
@@ -965,7 +965,7 @@
                       </tr>
                       <tr>
                         <td className="border-2 border-black p-1.5 font-bold align-top">Penyelaras</td>
-                        <td className="border-2 border-black p-1.5 align-top uppercase" colSpan="2">{r.penyelaras}</td>
+                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">{r.penyelaras}</td>
                       </tr>
                       <tr>
                         <td className="border-2 border-black p-1.5 font-bold align-top">Unit / Panitia</td>
@@ -1054,14 +1054,14 @@
                         </td>
                       </tr>
 
-                      <tr className="print:break-inside-avoid">
+                      <tr>
                         <td className="border-2 border-black p-1.5 font-bold align-top">Gambar</td>
                         <td className="border-2 border-black p-1.5 align-top text-center" colSpan="2">
                           {r.gambar && r.gambar.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-3 print:grid-cols-3 gap-1">
+                            <div className="grid grid-cols-1 md:grid-cols-3 print:grid-cols-3 gap-2 print:break-inside-avoid">
                               {r.gambar.map((src, idx) => (
-                                <div key={idx} className="w-full aspect-[4/3] border border-gray-300 overflow-hidden flex items-center justify-center bg-gray-50 print:break-inside-avoid">
-                                  <img src={src} alt={`Gambar ${idx+1}`} className="w-full h-full object-cover" />
+                                <div key={idx} className="aspect-[4/3] w-full border border-gray-300 overflow-hidden flex items-center justify-center bg-white print:bg-transparent">
+                                  <img src={src} alt={`Gambar ${idx+1}`} className="w-full h-full object-contain" style={{ objectFit: 'contain' }} />
                                 </div>
                               ))}
                             </div>
