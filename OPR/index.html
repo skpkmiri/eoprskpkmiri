@@ -203,6 +203,7 @@
             penyelaras: '',
             kehadiranGuru: [],
             staffTidakHadir: [], 
+            sebabTidakHadir: {}, // Tambahan Objek untuk menyimpan pilihan sebab staf
             kehadiranIbuBapa: false,
             kehadiranMurid: false,
             jumlahMurid: '',
@@ -211,6 +212,8 @@
             kehadiranAgensiLuar: false,
             namaAgensiLuar: '',
             tarikh: '',
+            lebihSatuHari: false,
+            tarikhHingga: '',
             masa: '',
             tempat: '',
             isu: '',
@@ -320,13 +323,30 @@
             setFormData(prev => {
                 const currentArray = Array.isArray(prev.staffTidakHadir) ? prev.staffTidakHadir : [];
                 const isSelected = currentArray.includes(guru);
+                
+                const newSebab = { ...(prev.sebabTidakHadir || {}) };
+                if (isSelected) {
+                    delete newSebab[guru]; // Buang sebab jika untick
+                }
+
                 return {
                     ...prev,
                     staffTidakHadir: isSelected 
                         ? currentArray.filter(g => g !== guru)
-                        : [...currentArray, guru]
+                        : [...currentArray, guru],
+                    sebabTidakHadir: newSebab
                 };
             });
+          };
+
+          const handleSebabChange = (guru, sebab) => {
+            setFormData(prev => ({
+                ...prev,
+                sebabTidakHadir: {
+                    ...(prev.sebabTidakHadir || {}),
+                    [guru]: sebab
+                }
+            }));
           };
 
           const handleImageUpload = (e) => {
@@ -401,6 +421,9 @@
             const reportToEdit = { ...report };
             if (typeof reportToEdit.staffTidakHadir === 'string') {
                 reportToEdit.staffTidakHadir = []; 
+            }
+            if (!reportToEdit.sebabTidakHadir) {
+                reportToEdit.sebabTidakHadir = {};
             }
             setFormData(reportToEdit);
             setActiveTab('form');
@@ -521,22 +544,50 @@
                     <div className="flex justify-between items-center mb-2">
                         <label className="block text-sm font-semibold text-gray-700">Senarai Staf / Guru Tidak Hadir</label>
                     </div>
-                    <p className="text-xs text-gray-500 mb-2">Tandakan pada nama yang ingin direkodkan sebagai Tidak Hadir ke program ini (senarai diambil daripada staf yang tidak ditanda hadir di atas).</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 max-h-64 overflow-y-auto p-3 border border-gray-300 rounded-md bg-white shadow-sm">
+                    <p className="text-xs text-gray-500 mb-2">Tandakan pada nama yang ingin direkodkan sebagai Tidak Hadir ke program ini, dan pilih sebab ketiadaan.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-y-auto p-3 border border-gray-300 rounded-md bg-white shadow-sm">
                       {senaraiGuru.filter(g => !formData.kehadiranGuru.includes(g)).length > 0 ? (
                           senaraiGuru
                               .filter(g => !formData.kehadiranGuru.includes(g))
-                              .map((guru, idx) => (
-                                <label key={`tdk-hadir-${idx}`} className="flex items-start gap-2 text-sm cursor-pointer hover:bg-red-50 p-1.5 rounded transition">
-                                  <input 
-                                    type="checkbox" 
-                                    checked={Array.isArray(formData.staffTidakHadir) && formData.staffTidakHadir.includes(guru)}
-                                    onChange={() => handleTidakHadirCheckbox(guru)}
-                                    className="mt-0.5 rounded text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer"
-                                  />
-                                  <span className="leading-tight text-gray-800">{guru}</span>
-                                </label>
-                              ))
+                              .map((guru, idx) => {
+                                const isChecked = Array.isArray(formData.staffTidakHadir) && formData.staffTidakHadir.includes(guru);
+                                return (
+                                <div key={`tdk-hadir-${idx}`} className={`flex flex-col p-2 rounded transition ${isChecked ? 'bg-red-50 border border-red-200' : 'hover:bg-gray-50 border border-transparent'}`}>
+                                  <label className="flex items-start gap-2 text-sm cursor-pointer">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={isChecked}
+                                      onChange={() => handleTidakHadirCheckbox(guru)}
+                                      className="mt-0.5 rounded text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer"
+                                    />
+                                    <span className="leading-tight text-gray-800 font-medium">{guru}</span>
+                                  </label>
+                                  {isChecked && (
+                                      <select 
+                                        className="mt-2 ml-6 text-sm border border-gray-300 rounded p-1.5 focus:ring-red-500 focus:border-red-500 bg-white"
+                                        value={(formData.sebabTidakHadir && formData.sebabTidakHadir[guru]) || ''}
+                                        onChange={(e) => handleSebabChange(guru, e.target.value)}
+                                        required
+                                      >
+                                        <option value="">Pilih Sebab...</option>
+                                        <option value="Cuti Rehat Khas (CRK)">Cuti Rehat Khas (CRK)</option>
+                                        <option value="Cuti Rehat (CR)">Cuti Rehat (CR)</option>
+                                        <option value="Cuti Tanpa Rekod">Cuti Tanpa Rekod</option>
+                                        <option value="Cuti Tanpa Rekod Kelompok">Cuti Tanpa Rekod Kelompok</option>
+                                        <option value="Cuti Menjaga Anak Kuarantin">Cuti Menjaga Anak Kuarantin</option>
+                                        <option value="Cuti Tanpa Gaji">Cuti Tanpa Gaji</option>
+                                        <option value="Cuti Sakit (MC)">Cuti Sakit (MC)</option>
+                                        <option value="Urusan Rasmi / Mesyuarat">Urusan Rasmi / Mesyuarat</option>
+                                        <option value="Kursus / Bengkel / Taklimat / SLU">Kursus / Bengkel / Taklimat / SLU</option>
+                                        <option value="Cuti Bersalin">Cuti Bersalin</option>
+                                        <option value="KKWP">KKWP</option>
+                                        <option value="Cuti Kecemasan">Cuti Kecemasan</option>
+                                        <option value="Urusan Peribadi">Urusan Peribadi</option>
+                                        <option value="Temujanji Doktor">Temujanji Doktor</option>
+                                      </select>
+                                  )}
+                                </div>
+                              )})
                       ) : (
                           <div className="text-sm text-gray-500 italic col-span-full">Semua staf telah ditanda hadir.</div>
                       )}
@@ -633,7 +684,21 @@
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700">Tarikh</label>
-                    <input type="date" name="tarikh" value={formData.tarikh} onChange={handleInputChange} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                    <div className="mt-1 space-y-2">
+                        <input type="date" name="tarikh" value={formData.tarikh} onChange={handleInputChange} required className="block w-full border border-gray-300 rounded-md shadow-sm p-2" />
+                        
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="checkbox" name="lebihSatuHari" checked={formData.lebihSatuHari || false} onChange={handleInputChange} className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer" />
+                            <span className="text-gray-700 font-medium">Lebih 1 hari</span>
+                        </label>
+                        
+                        {formData.lebihSatuHari && (
+                            <div className="flex items-center gap-2 bg-gray-50 p-2 rounded border border-gray-200">
+                                <span className="text-sm font-semibold text-gray-600">Hingga:</span>
+                                <input type="date" name="tarikhHingga" value={formData.tarikhHingga || ''} onChange={handleInputChange} required={formData.lebihSatuHari} className="block w-full border border-gray-300 rounded-md shadow-sm p-1.5 text-sm" />
+                            </div>
+                        )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700">Masa</label>
@@ -759,10 +824,12 @@
                       </tr>
                     </thead>
                     <tbody>
-                      {reports.map((report) => (
+                      {reports.map((report) => {
+                        const displayTarikh = report.lebihSatuHari && report.tarikhHingga ? `${report.tarikh} hingga ${report.tarikhHingga}` : (report.tarikh || '-');
+                        return (
                         <tr key={report.id} className="hover:bg-gray-50 transition">
                           <td className="py-3 px-4 border-b text-sm text-gray-800 align-top">
-                             <div className="font-medium">{report.tarikh || '-'}</div>
+                             <div className="font-medium">{displayTarikh}</div>
                              <div className="flex flex-wrap gap-1 mt-1">
                                 {report.signSemak && report.signSah ? (
                                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold border border-blue-300">✅ Lengkap Disemak</span>
@@ -809,7 +876,7 @@
                             </button>
                           </td>
                         </tr>
-                      ))}
+                      )})}
                     </tbody>
                   </table>
                 </div>
@@ -834,13 +901,17 @@
             let tidakHadirDisplay = '';
             if (Array.isArray(r.staffTidakHadir)) {
                 tidakHadirDisplay = r.staffTidakHadir.length > 0 
-                  ? r.staffTidakHadir.map((nama, idx) => `${idx + 1}. ${nama}`).join('\n')
+                  ? r.staffTidakHadir.map((nama, idx) => {
+                      const sebab = (r.sebabTidakHadir && r.sebabTidakHadir[nama]) ? ` - ${r.sebabTidakHadir[nama]}` : '';
+                      return `${idx + 1}. ${nama}${sebab}`;
+                  }).join('\n')
                   : null;
-            } else if (r.staffTidakHadir && r.staffTidakHadir.trim() !== '') {
+            } else if (r.staffTidakHadir && typeof r.staffTidakHadir === 'string' && r.staffTidakHadir.trim() !== '') {
                 tidakHadirDisplay = r.staffTidakHadir;
             }
 
             const isLengkapDisemak = Boolean(r.signSemak && r.signSah);
+            const displayTarikh = r.lebihSatuHari && r.tarikhHingga ? `${r.tarikh} hingga ${r.tarikhHingga}` : (r.tarikh || '-');
 
             return (
               <div className="max-w-4xl mx-auto mb-10">
@@ -973,7 +1044,7 @@
                       </tr>
                       <tr>
                         <td className="border-2 border-black p-1.5 font-bold align-top">Tarikh</td>
-                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">{r.tarikh}</td>
+                        <td className="border-2 border-black p-1.5 align-top" colSpan="2">{displayTarikh}</td>
                       </tr>
                       <tr>
                         <td className="border-2 border-black p-1.5 font-bold align-top">Masa</td>
@@ -1083,7 +1154,7 @@
                   <div className="mb-6">
                     <div className="grid grid-cols-[100px_10px_1fr] gap-1 mb-2 text-sm md:text-base">
                       <span className="font-bold">Program</span><span>:</span><span className="uppercase">{r.program}</span>
-                      <span className="font-bold">Tarikh</span><span>:</span><span>{r.tarikh}</span>
+                      <span className="font-bold">Tarikh</span><span>:</span><span>{displayTarikh}</span>
                     </div>
                   </div>
 
